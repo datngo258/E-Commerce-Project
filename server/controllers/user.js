@@ -201,7 +201,32 @@ const deleteUser = asyncHandler(async (req, res) => {
     user: respone ? "Xóa user thành công " : "Không xóa được!",
   });
 });
-
+// api update user
+const updateUserByUser = asyncHandler(async (req, res) => {
+  const { _id } = req.user;
+  if (!_id || Object.keys(req.body).length === 0)
+    throw new Error("Missing input");
+  const respone = await User.findByIdAndUpdate(_id, req.body, {
+    new: true,
+  }).select("-refreshToken -password ");
+  return res.status(200).json({
+    success: respone ? true : false,
+    user: respone ? "User được update thành công" : "Không update được!",
+  });
+});
+// api update user by admin
+const updateUserByAdmin = asyncHandler(async (req, res) => {
+  const { uid } = req.params;
+  if (!req.body || Object.keys(req.body).length === 0)
+    throw new Error("Missing input");
+  const respone = await User.findByIdAndUpdate(uid, req.body, {
+    new: true,
+  }).select("-refreshToken -password ");
+  return res.status(200).json({
+    success: respone ? true : false,
+    user: respone ? "User được update thành công" : "Không update được!",
+  });
+});
 module.exports = {
   register,
   login,
@@ -212,4 +237,6 @@ module.exports = {
   verifyResetToken,
   getUser,
   deleteUser,
+  updateUserByUser,
+  updateUserByAdmin,
 };

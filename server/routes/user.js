@@ -13,6 +13,12 @@ router.get("/forgotpassword", ctrls.fogotPassword);
 router.put("/resetPassword", ctrls.verifyResetToken);
 router.get("/getUser", [verifyToken, isAdmin], ctrls.getUser);
 router.delete("/getUser", [verifyToken, isAdmin], ctrls.deleteUser);
+router.put("/updateUser", [verifyToken], ctrls.updateUserByUser);
+router.put(
+  "/updateUserByAdmin/:uid",
+  [verifyToken, isAdmin],
+  ctrls.updateUserByAdmin
+);
 
 module.exports = router;
 
