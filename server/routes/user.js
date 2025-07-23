@@ -1,10 +1,10 @@
-const express = require("express");
-const router = express.Router();
-const ctrls = require("../controllers/user");
-const {} = require("../middleware/verifyToken");
-const { verifyToken, isAdmin } = require("../middleware/verifyToken");
+    const express = require("express");
+    const router = express.Router();
+    const ctrls = require("../controllers/user");
+    const {} = require("../middleware/verifyToken");
+    const { verifyToken, isAdmin } = require("../middleware/verifyToken");
 
-router.post("/register", ctrls.register);
+    router.post("/register", ctrls.register);
 router.post("/login", ctrls.login);
 router.get("/Current", verifyToken, ctrls.getCurrent);
 router.post("/refreshToken", ctrls.refreshAccessToken);

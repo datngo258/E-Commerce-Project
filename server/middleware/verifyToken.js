@@ -36,8 +36,20 @@ const isAdmin = asyncHandler((req, res, next) => {
   }
   next();
 });
+const isAdminOrSeller = asyncHandler((req, res, next) => {
+  console.log(req.user);
+  const { role } = req.user;
+  if (role !== "seller" && role !== "admin") {
+    return res.status(404).json({
+      success: false,
+      mes: " không phải là admin hoặc seller, không có quyền !",
+    });
+  }
+  next();
+});
 
 module.exports = {
   isAdmin,
   verifyToken,
+  isAdminOrSeller,
 };
