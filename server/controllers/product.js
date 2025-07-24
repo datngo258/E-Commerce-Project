@@ -35,13 +35,74 @@ const getProduct = asyncHandler(async (req, res) => {
 });
 
 // api get all products
+const qs = require("qs");
+
 const getAllProducts = asyncHandler(async (req, res) => {
-  const products = await Product.find();
-  return res.status(200).json({
-    success: products ? true : false,
-    products: products ? products : "Không tìm thấy sản phẩm nào",
+  const rawQuery = req._parsedUrl.query; // Lấy query string gốc
+  const parsedQuery = qs.parse(rawQuery); // Parse lại chuẩn
+
+  const queries = { ...parsedQuery };
+  const excludeFields = ["sort", "page", "limit", "fields"];
+  excludeFields.forEach((field) => delete queries[field]);
+
+  // Convert string to number cho các toán tử
+  Object.keys(queries).forEach((key) => {
+    if (typeof queries[key] === "object") {
+      Object.keys(queries[key]).forEach((operator) => {
+        const value = queries[key][operator];
+        if (!isNaN(value)) {
+          queries[key][operator] = Number(value);
+        }
+      });
+    }
+  });
+
+  let queryStr = JSON.stringify(queries);
+  queryStr = queryStr.replace(
+    /\b(gt|gte|lt|lte|in)\b/g,
+    (match) => `$${match}`
+  );
+  const formatedQueryStr = JSON.parse(queryStr);
+
+  // Regex title
+  if (parsedQuery.title) {
+    formatedQueryStr.title = { $regex: parsedQuery.title, $options: "i" };
+  }
+
+  let queryCommand = Product.find(formatedQueryStr);
+
+  // Sort
+  if (parsedQuery.sort) {
+    const sortBy = parsedQuery.sort.split(",").join(" ");
+    queryCommand = queryCommand.sort(sortBy);
+  } else {
+    queryCommand = queryCommand.sort("-createdAt");
+  }
+
+  // Select fields
+  if (parsedQuery.fields) {
+    const fields = parsedQuery.fields.split(",").join(" ");
+    queryCommand = queryCommand.select(fields);
+  }
+
+  // Pagination
+  const page = parseInt(parsedQuery.page) || 1;
+  const limit = parseInt(parsedQuery.limit) || 10;
+  const skip = (page - 1) * limit;
+  queryCommand = queryCommand.skip(skip).limit(limit);
+
+  const products = await queryCommand;
+  const counts = await Product.countDocuments(formatedQueryStr);
+
+  res.status(200).json({
+    success: products.length > 0,
+    count: counts,
+    page,
+    limit,
+    products: products.length > 0 ? products : "Không tìm thấy sản phẩm nào",
   });
 });
+
 // api update product by seller
 
 // api update product by admin
@@ -81,10 +142,76 @@ const deleteProduct = asyncHandler(async (req, res) => {
   });
 });
 
+const ratings = asyncHandler(async (req, res) => {
+  const { _id } = req.user;
+  const { star, comment, pid } = req.body;
+
+  console.log("🔥 API /ratings called with", { _id, star, comment, pid });
+
+  if (!star || !pid) throw new Error("Missing inputs");
+
+  const product = await Product.findById(pid);
+  if (!product) throw new Error("Product not found");
+
+  const alreadyRating = product.ratings?.some(
+    (el) => el.postedBy.toString() === _id
+  );
+
+  console.log("🧩 alreadyRating =", alreadyRating);
+
+  try {
+    if (alreadyRating) {
+      await Product.findOneAndUpdate(
+        { _id: pid, "ratings.postedBy": _id },
+        {
+          $set: {
+            "ratings.$.star": star,
+            "ratings.$.comment": comment,
+          },
+        },
+        { new: true }
+      );
+    } else {
+      await Product.findByIdAndUpdate(
+        pid,
+        {
+          $push: { ratings: { star, comment, postedBy: _id } },
+        },
+        { new: true }
+      );
+    }
+
+    console.log("✅ Updated ratings array");
+  } catch (err) {
+    console.error("❌ Error while updating rating:", err.message);
+  }
+
+  const updatedProduct = await Product.findById(pid);
+  const ratingCount = updatedProduct.ratings.length;
+  const sumRating = updatedProduct.ratings.reduce(
+    (sum, el) => sum + Number(el.star),
+    0
+  );
+
+  updatedProduct.totalRatings = Math.round(sumRating / ratingCount);
+
+  console.log("✅ Calculated totalRatings:", updatedProduct.totalRatings);
+
+  await updatedProduct.save();
+
+  console.log("✅ Saved product with updated totalRatings");
+
+  return res.status(200).json({
+    status: true,
+    data: updatedProduct,
+  });
+});
+
 module.exports = {
   createProduct,
   deleteProduct,
   getProduct,
   getAllProducts,
   updateProduct,
+  ratings,
 };
