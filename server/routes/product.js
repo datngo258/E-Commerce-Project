@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const ctrls = require("../controllers/product");
 const {} = require("../middleware/verifyToken");
+const uploadCloud = require("../config/cloudinary.config");
 const {
   verifyToken,
   isAdmin,
@@ -11,6 +12,13 @@ const {
 router.post("/", verifyToken, isAdminOrSeller, ctrls.createProduct);
 router.get("/", ctrls.getAllProducts);
 router.put("/ratings", verifyToken, ctrls.ratings);
+router.post(
+  "/upload-images/:id",
+  verifyToken,
+  isAdminOrSeller,
+  uploadCloud.single("images"),
+  ctrls.uploadImagesProduct
+);
 
 router.put("/:id", verifyToken, isAdmin, ctrls.updateProduct);
 router.delete("/:id", verifyToken, isAdmin, ctrls.deleteProduct);

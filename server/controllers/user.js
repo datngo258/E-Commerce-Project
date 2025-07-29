@@ -186,6 +186,7 @@ const verifyResetToken = asyncHandler(async (req, res) => {
   });
 });
 const getUser = asyncHandler(async (req, res) => {
+  console.log("User ID:", req.user);
   const respone = await User.find();
   return res.status(200).json({
     success: respone ? true : false,

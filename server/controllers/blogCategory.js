@@ -27,15 +27,6 @@ const createblogCategory = asyncHandler(async (req, res) => {
   });
 });
 
-const getCategories = asyncHandler(async (req, res) => {
-  const categories = await blogCategory.find().select("title _id");
-
-  return res.status(200).json({
-    success: categories ? true : false,
-    categories: categories ? categories : "Không tìm thấy blog-category",
-  });
-});
-
 const updateblogCategory = asyncHandler(async (req, res) => {
   const { id } = req.params;
   if (!id) {
@@ -69,6 +60,14 @@ const deleteblogCategory = asyncHandler(async (req, res) => {
     message: category
       ? "Xoá blog-category thành công"
       : "Không tìm thấy blog-category",
+  });
+});
+const getCategories = asyncHandler(async (req, res) => {
+  
+  const categories = await blogCategory.find();
+  return res.status(200).json({
+    success: categories ? true : false,
+    categories: categories.length > 0 ? categories : "Không tìm thấy danh mục",
   });
 });
 
