@@ -16,7 +16,7 @@ router.post(
   "/upload-images/:id",
   verifyToken,
   isAdminOrSeller,
-  uploadCloud.single("images"),
+  uploadCloud.array("images", 10),
   ctrls.uploadImagesProduct
 );
 
