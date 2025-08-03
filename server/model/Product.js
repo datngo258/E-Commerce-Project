@@ -19,6 +19,11 @@ var productSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    thumb: {
+      type: String,
+      default:
+        "https://apollobattery.com.au/wp-content/uploads/2022/08/default-product-image.png",
+    },
     brand: {
       type: String,
       required: true,
@@ -74,7 +79,7 @@ var productSchema = new mongoose.Schema(
     ],
     totalRatings: {
       type: Number,
-      default: 0,
+      default: 3,
     },
   },
   {

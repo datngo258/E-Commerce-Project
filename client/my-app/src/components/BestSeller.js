@@ -17,21 +17,27 @@ const settings = {
 };
 
 const BestSeller = () => {
+  // bán chạy, mới nhất , tab đang chạy , sản phẩm đang hiển thị
   const [bestSellers, setBestSellers] = useState(null);
   const [newProducts, setNewProducts] = useState(null);
   const [activedTab, setActivedTab] = useState(1);
   const [products, setProducts] = useState(null);
 
   const fetchProducts = async () => {
+    //response là mảng 2 phần từ [ bán chạy nhất, mới nhất  ]
     const response = await Promise.all([
       apiGetProducts({ sort: "-sold" }),
       apiGetProducts({ sort: "-createdAt" }),
     ]);
+    // nếu response[0] có success thì set bestSellers và products
     if (response[0]?.success) {
       setBestSellers(response[0].products);
       setProducts(response[0].products);
     }
+    // nếu response[1] có success thì set newProducts
     if (response[1]?.success) setNewProducts(response[1].products);
+    // luôn set products từ response[0]
+    // vì mặc định tab đang chạy là 1 (bán chạy nhất)
     setProducts(response[0].products);
   };
   useEffect(() => {
