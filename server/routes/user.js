@@ -9,10 +9,12 @@ router.post("/login", ctrls.login);
 router.get("/Current", verifyToken, ctrls.getCurrent);
 router.post("/refreshToken", ctrls.refreshAccessToken);
 router.get("/logout", ctrls.logout);
-router.get("/forgotpassword", ctrls.fogotPassword);
-router.put("/resetPassword", ctrls.verifyResetToken);
+router.post("/forgotpassword", ctrls.fogotPassword);
+// router.put("/resetPassword", ctrls.verifyResetToken);
+router.put("/resetPassword/:token", ctrls.verifyResetToken);
 router.get("/getUser", [verifyToken, isAdmin], ctrls.getUser);
 router.delete("/getUser", [verifyToken, isAdmin], ctrls.deleteUser);
+router.get("/finalregister/:token", ctrls.finalRegister);
 router.put("/updateUser", [verifyToken], ctrls.updateUserByUser);
 router.put(
   "/updateUserByAdmin/:uid",

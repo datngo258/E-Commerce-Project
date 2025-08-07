@@ -9,10 +9,12 @@ const generatePreefresToken = (uid, role) => {
     expiresIn: "7d",
   });
 };
-
-
+const makeToken = (userData) => {
+  return jwt.sign(userData, process.env.JWT_SECRET, { expiresIn: "15m" });
+};
 
 module.exports = {
   generatePreefresToken,
   generateAccessToken,
+  makeToken,
 };

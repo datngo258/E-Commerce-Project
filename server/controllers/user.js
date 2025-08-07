@@ -10,27 +10,87 @@ const sendMail = require("../ultils/sendMail");
 const asyncHandler = require("express-async-handler");
 // const jwt  = require("../middleware/jwt");
 const jwt = require("jsonwebtoken");
+// const makeToken = require("uniqid");
+const { makeToken } = require("../middleware/jwt"); // đúng file chứa hàm `jwt.sign(...)`
+// const register = asyncHandler(async (req, res) => {
+//   const { email, lastname, firstname, password } = req.body || {};
+//   if (!email || !lastname || !firstname || !password)
+//     return res.status(400).json({
+//       success: false,
+//       message: "missing input",
+//     });
 
+//   const user = await User.findOne({ email: email });
+//   if (user) {
+//     throw new Error("User đã tồn tại!");
+//   } else {
+//     const newUser = await User.create(req.body);
+//     return res.status(200).json({
+//       success: newUser ? true : false,
+//       message: newUser
+//         ? "Đã đăng ký xong!!  hãy đăng nhậpp"
+//         : "Có lỗi đã xảy ra",
+//     });
+//   }
+// });
 const register = asyncHandler(async (req, res) => {
-  const { email, lastname, firstname, password } = req.body || {};
-  if (!email || !lastname || !firstname || !password)
+  for (const cookieName in req.cookies) {
+    res.clearCookie(cookieName);
+  }
+  const { email, password, firstname, lastname, mobile } = req.body;
+  if (!email || !password || !lastname || !firstname || !mobile) {
     return res.status(400).json({
       success: false,
-      message: "missing input",
-    });
-
-  const user = await User.findOne({ email: email });
-  if (user) {
-    throw new Error("User đã tồn tại!");
-  } else {
-    const newUser = await User.create(req.body);
-    return res.status(200).json({
-      success: newUser ? true : false,
-      message: newUser
-        ? "Đã đăng ký xong!!  hãy đăng nhậpp"
-        : "Có lỗi đã xảy ra",
+      mes: "Missing inputs",
     });
   }
+  const user = await User.findOne({ email });
+  if (user) throw new Error("User has existed");
+  else {
+    // const token = makeToken();
+    const token = makeToken({ email, password, firstname, lastname, mobile });
+    res.cookie(
+      "dataregister",
+      { ...req.body, token },
+      { httpOnly: true, maxAge: 15 * 60 * 1000 }
+    );
+    console.log("Set cookie");
+    const html = `Xin vui lòng click vào link dưới đây để hoàn tất quá trình đăng ký.Link này sẽ hết hạn sau 15 phút kể từ bây giờ. <a href=${process.env.URL_SERVER}/api/user/finalregister/${token}>Click here</a>`;
+    await sendMail({
+      to: email,
+      html,
+      subject: "Hoàn tất đăng ký Digital World",
+    });
+    return res.json({
+      success: true,
+      mes: "Please check your email to active account",
+    });
+  }
+});
+const finalRegister = asyncHandler(async (req, res) => {
+  const cookie = req.cookies;
+  const { token } = req.params;
+
+  console.log("Token từ URL:", req.params.token);
+  console.log("token lay tu param : ", token);
+  console.log("cookie : ", cookie);
+
+  if (!cookie || cookie?.dataregister?.token !== token) {
+    console.log("===> khac nhau");
+    res.clearCookie("dataregister");
+    return res.redirect(`${process.env.CLIENT_URL}/finalregister/failed`);
+  }
+  const newUser = await User.create({
+    email: cookie?.dataregister?.email,
+    password: cookie?.dataregister?.password,
+    mobile: cookie?.dataregister?.mobile,
+    firstname: cookie?.dataregister?.firstname,
+    lastname: cookie?.dataregister?.lastname,
+  });
+  res.clearCookie("dataregister");
+  if (newUser)
+    return res.redirect(`${process.env.CLIENT_URL}/finalregister/success`);
+  else return res.redirect(`${process.env.CLIENT_URL}/finalregister/failed`);
 });
 const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body || {};
@@ -132,18 +192,14 @@ const logout = asyncHandler(async (req, res) => {
 
 const fogotPassword = asyncHandler(async (req, res) => {
   // 1 . Tạo resetToken và lưu vào db user
-  const { email } = req.query;
+  const { email } = req.body;
   if (!email) throw new Error("Không tìm thấy email!!");
   const user = await User.findOne({ email });
   if (!user) throw new Error("Không tìm thấy user!!");
   const resetToken = user.createPasswordChangeToken();
   await user.save();
 
-  const html = `
-  Xin vui lòng click vào đường link bên dưới để thay đổi mật khẩu.
-  (token có thời hạn là 15p)
-  <a href="${process.env.URL_SERVER}/api/user/reset-password/${resetToken}">Thay đổi mật khẩu</a>
-`;
+  const html = `Xin vui lòng click vào link dưới đây để thay đổi mật khẩu của bạn.Link này sẽ hết hạn sau 15 phút kể từ bây giờ. <a href=${process.env.CLIENT_URL}/reset-password/${resetToken}>Click here</a>`;
   console.log("resetToken gửi đi lúc gửi mail", resetToken);
 
   const data = {
@@ -153,26 +209,32 @@ const fogotPassword = asyncHandler(async (req, res) => {
   };
   const rs = await sendMail(data);
   return res.status(200).json({
-    success: true,
-    rs,
+    success: rs.response?.includes("OK") ? true : false,
+    mes: rs.response?.includes("OK")
+      ? "Check your mail please."
+      : "Something went wrong. Please try later",
   });
 });
 const verifyResetToken = asyncHandler(async (req, res) => {
   // lấy password, resetToken từ client
-  const { password, resetToken } = req.body;
-  console.log("resetToken nhận được từ req: ", resetToken);
+  const { password } = req.body;
+  const { token: resetToken } = req.params;
+  console.log("Thông tin xác nhận đổi mk: ", req.body);
+  console.log("Thông tin xác nhận đổi mk: ", resetToken);
+
   if (!password || !resetToken) throw new Error("Missing input");
   // băm resetToken ra để kiểm tra.
   const passwordResetToken = crypto
     .createHash("sha256")
     .update(resetToken)
     .digest("hex");
+  console.log(passwordResetToken);
   console.log("resetToken sau khi băm : ", resetToken);
-
   const user = await User.findOne({
     passwordResetToken,
     passwordResetExpires: { $gt: Date.now() },
   });
+  console.log(user);
   if (!user) throw new Error("resetToken sai");
   user.password = password;
   user.passwordResetToken = undefined;
@@ -310,4 +372,5 @@ module.exports = {
   updateUserByAdmin,
   updateUserAddress,
   updateCart,
+  finalRegister,
 };

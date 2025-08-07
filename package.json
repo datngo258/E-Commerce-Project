@@ -2,5 +2,8 @@
   "dependencies": {
     "nodemailer": "^7.0.5",
     "slugify": "^1.6.6"
+  },
+  "devDependencies": {
+    "@babel/plugin-proposal-decorators": "^7.28.0"
   }
 }

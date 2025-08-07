@@ -1,6 +1,10 @@
 const nodemailer = require("nodemailer");
 
 const sendMail = async ({ to, subject, html }) => {
+  if (!to) {
+    throw new Error("No recipients defined");
+  }
+
   const transporter = nodemailer.createTransport({
     host: "smtp.gmail.com",
     port: 587,
